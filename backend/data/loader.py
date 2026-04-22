@@ -1,6 +1,8 @@
 import yfinance as yf
 import pandas as pd
+import numpy as np
 from pathlib import Path
+
 
 class DataLoader:
     def __init__(self, cache_dir="backend/data/raw"):
