@@ -16,11 +16,21 @@ class DataLoader:
             if not df.empty and 'Close' in df.columns:
                 return df
 
+        print(f"DEBUG: Fetching data for {ticker} from {start} to {end}")
+        
+        # Use a custom session/headers to avoid being blocked by Yahoo Finance on cloud IPs
+        import requests
+        session = requests.Session()
+        session.headers.update({
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+        })
+
         # Download fresh — auto_adjust=True gives clean OHLCV without MultiIndex
         df = yf.download(ticker, start=start, end=end, interval=interval,
-                         auto_adjust=True, progress=False)
+                         auto_adjust=True, progress=False, session=session)
 
         if df.empty:
+            print(f"ERROR: yfinance returned empty DataFrame for {ticker}")
             raise ValueError(f"No data returned for ticker '{ticker}'. Check the symbol.")
 
         # Flatten MultiIndex if present (yfinance 0.2.40+ often returns this)
