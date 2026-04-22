@@ -12,50 +12,59 @@ class DataLoader:
 
         if cache_path.exists():
             df = pd.read_csv(cache_path, index_col=0, parse_dates=True)
-            # Validate cache
             if not df.empty and 'Close' in df.columns:
                 return df
 
-        print(f"DEBUG: Fetching data for {ticker} from {start} to {end}")
+        print(f"DEBUG: Attempting to fetch {ticker} ({start} to {end})")
         
-        # Use a custom session/headers to avoid being blocked by Yahoo Finance on cloud IPs
+        # PROVIDER 1: yfinance (with Browser User-Agent)
         import requests
         session = requests.Session()
         session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
         })
-
-        # Switch to Ticker().history which is often more reliable than download() on cloud IPs
-        t = yf.Ticker(ticker, session=session)
         
+        df = pd.DataFrame()
         try:
-            # Try specific range first
+            t = yf.Ticker(ticker, session=session)
+            # Try history method first
             df = t.history(start=start, end=end, interval=interval, auto_adjust=True)
+            if df.empty:
+                # Try fallback period method
+                print(f"DEBUG: yfinance range empty, trying period='2y'...")
+                df = t.history(period="2y", interval=interval, auto_adjust=True)
+                if not df.empty:
+                    mask = (df.index >= pd.to_datetime(start).tz_localize(df.index.tz)) & \
+                           (df.index <= pd.to_datetime(end).tz_localize(df.index.tz))
+                    df = df.loc[mask]
         except Exception as e:
-            print(f"DEBUG: Initial fetch failed: {str(e)}. Trying fallback...")
-            df = pd.DataFrame()
+            print(f"DEBUG: yfinance error: {str(e)}")
 
-        # Fallback: Try fetching '2y' period if range failed (sometimes Yahoo rejects specific date strings)
+        # PROVIDER 2: Stooq (via pandas_datareader) - extremely reliable fallback for stocks
         if df.empty:
-            print(f"DEBUG: Range fetch empty for {ticker}. Trying '2y' period fallback...")
-            df = t.history(period="2y", interval=interval, auto_adjust=True)
-            if not df.empty:
-                # Slice to the requested range locally if possible
-                mask = (df.index >= pd.to_datetime(start).tz_localize(df.index.tz)) & \
-                       (df.index <= pd.to_datetime(end).tz_localize(df.index.tz))
-                df = df.loc[mask]
+            print(f"DEBUG: yfinance failed completely. Trying Stooq fallback...")
+            try:
+                import pandas_datareader.data as web
+                # Stooq uses .US suffix for US stocks
+                stooq_ticker = f"{ticker}.US" if "-" not in ticker and ".NS" not in ticker else ticker
+                df = web.DataReader(stooq_ticker, 'stooq', start, end)
+                if not df.empty:
+                    df = df.sort_index() # Stooq returns data in reverse chronological order
+                    # Rename columns to standard OHLCV if needed
+                    df = df.rename(columns={'Open': 'Open', 'High': 'High', 'Low': 'Low', 'Close': 'Close', 'Volume': 'Volume'})
+            except Exception as e:
+                print(f"DEBUG: Stooq fallback error: {str(e)}")
 
         if df.empty:
-            print(f"ERROR: yfinance returned empty DataFrame for {ticker}. Start: {start}, End: {end}")
-            raise ValueError(f"No data returned for ticker '{ticker}' between {start} and {end}. This usually means Yahoo Finance is blocking the cloud server IP. Try again in a few minutes.")
+            raise ValueError(f"CRITICAL: Could not fetch data for '{ticker}' from any provider. Yahoo Finance and Stooq are both blocking this request. Please try a different ticker or wait a few minutes.")
 
-        # Flatten MultiIndex if present (yfinance 0.2.40+ often returns this)
+        # Standardize: Ensure index is datetime and named 'Date'
+        df.index = pd.to_datetime(df.index)
+        df.index.name = 'Date'
+
+        # Flatten MultiIndex if present
         if isinstance(df.columns, pd.MultiIndex):
-            # Try to find the OHLCV levels
-            if 'Close' in df.columns.get_level_values(0):
-                df.columns = df.columns.get_level_values(0)
-            else:
-                df.columns = df.columns.get_level_values(1)
+            df.columns = df.columns.get_level_values(0)
 
         # Persist to cache
         df.to_csv(cache_path)
