@@ -27,11 +27,27 @@ class DataLoader:
 
         # Switch to Ticker().history which is often more reliable than download() on cloud IPs
         t = yf.Ticker(ticker, session=session)
-        df = t.history(start=start, end=end, interval=interval, auto_adjust=True)
+        
+        try:
+            # Try specific range first
+            df = t.history(start=start, end=end, interval=interval, auto_adjust=True)
+        except Exception as e:
+            print(f"DEBUG: Initial fetch failed: {str(e)}. Trying fallback...")
+            df = pd.DataFrame()
+
+        # Fallback: Try fetching '2y' period if range failed (sometimes Yahoo rejects specific date strings)
+        if df.empty:
+            print(f"DEBUG: Range fetch empty for {ticker}. Trying '2y' period fallback...")
+            df = t.history(period="2y", interval=interval, auto_adjust=True)
+            if not df.empty:
+                # Slice to the requested range locally if possible
+                mask = (df.index >= pd.to_datetime(start).tz_localize(df.index.tz)) & \
+                       (df.index <= pd.to_datetime(end).tz_localize(df.index.tz))
+                df = df.loc[mask]
 
         if df.empty:
             print(f"ERROR: yfinance returned empty DataFrame for {ticker}. Start: {start}, End: {end}")
-            raise ValueError(f"No data returned for ticker '{ticker}' between {start} and {end}. Yahoo Finance may be blocking the request or the symbol is invalid.")
+            raise ValueError(f"No data returned for ticker '{ticker}' between {start} and {end}. This usually means Yahoo Finance is blocking the cloud server IP. Try again in a few minutes.")
 
         # Flatten MultiIndex if present (yfinance 0.2.40+ often returns this)
         if isinstance(df.columns, pd.MultiIndex):
