@@ -19,10 +19,13 @@ from backend.strategies.base import EMACrossoverStrategy, RSIMeanReversionStrate
 from backend.backtester.engine import BacktestEngine
 from backend.backtester.metrics import MetricsCalculator
 
+# Configure CORS
+allowed_origins = os.getenv("ALLOWED_ORIGINS", "*").split(",")
+
 app = FastAPI(title="Algo Trading Engine")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"]
