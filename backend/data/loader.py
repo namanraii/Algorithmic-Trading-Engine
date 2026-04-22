@@ -25,13 +25,13 @@ class DataLoader:
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36'
         })
 
-        # Download fresh — auto_adjust=True gives clean OHLCV without MultiIndex
-        df = yf.download(ticker, start=start, end=end, interval=interval,
-                         auto_adjust=True, progress=False, session=session)
+        # Switch to Ticker().history which is often more reliable than download() on cloud IPs
+        t = yf.Ticker(ticker, session=session)
+        df = t.history(start=start, end=end, interval=interval, auto_adjust=True)
 
         if df.empty:
-            print(f"ERROR: yfinance returned empty DataFrame for {ticker}")
-            raise ValueError(f"No data returned for ticker '{ticker}'. Check the symbol.")
+            print(f"ERROR: yfinance returned empty DataFrame for {ticker}. Start: {start}, End: {end}")
+            raise ValueError(f"No data returned for ticker '{ticker}' between {start} and {end}. Yahoo Finance may be blocking the request or the symbol is invalid.")
 
         # Flatten MultiIndex if present (yfinance 0.2.40+ often returns this)
         if isinstance(df.columns, pd.MultiIndex):
