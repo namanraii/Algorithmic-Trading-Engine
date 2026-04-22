@@ -51,7 +51,7 @@ export default function App() {
     setError(null);
 
     try {
-      const res = await api.post('/backtest', {
+      const res = await api.post('backtest', {
         ticker: t,
         strategy,
         start_date: startDate,
@@ -73,7 +73,7 @@ export default function App() {
   const fetchMlPrediction = async (t) => {
     setMlLoading(true);
     try {
-      const ml = await api.get(`/predict/${t}`);
+      const ml = await api.get(`predict/${t}`);
       if (ml.data && !ml.data.error) setMlPred(ml.data);
     } catch (_) {
       // ML is optional — silently ignore
