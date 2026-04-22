@@ -2,7 +2,11 @@
 
 A high-performance, full-stack platform designed for quantitative traders and developers to build, test, and analyze algorithmic trading strategies. Unlike traditional retail trading apps that focus solely on order execution, this engine provides a comprehensive environment for **Strategy Validation** and **AI-Driven Prediction**.
 
-![Dashboard Mockup](https://raw.githubusercontent.com/namanraii/Algorithmic-Trading-Engine/main/docs/dashboard_preview.png) *(Placeholder for preview)*
+## 🔗 Live Demo
+- **Dashboard**: [https://algorithmic-trading-engine.vercel.app/](https://algorithmic-trading-engine.vercel.app/)
+- **API Backend**: [https://algorithmic-trading-engine.onrender.com/](https://algorithmic-trading-engine.onrender.com/)
+
+![Dashboard Preview](https://raw.githubusercontent.com/namanraii/Algorithmic-Trading-Engine/main/docs/dashboard_preview.png) *(Placeholder for preview)*
 
 ## 🚀 Key Features
 
