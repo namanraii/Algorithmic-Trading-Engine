@@ -36,3 +36,4 @@ backend/data/processed/
 .vscode/
 .DS_Store
 scratch/
+*.db

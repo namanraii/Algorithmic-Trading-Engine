@@ -19,16 +19,9 @@ class DataLoader:
 
         print(f"DEBUG: Attempting to fetch {ticker} ({start} to {end})")
         
-        # PROVIDER 1: yfinance (with Browser User-Agent)
-        import requests
-        session = requests.Session()
-        session.headers.update({
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
-        })
-        
         df = pd.DataFrame()
         try:
-            t = yf.Ticker(ticker, session=session)
+            t = yf.Ticker(ticker)
             # Try history method first
             df = t.history(start=start, end=end, interval=interval, auto_adjust=True)
             if df.empty:

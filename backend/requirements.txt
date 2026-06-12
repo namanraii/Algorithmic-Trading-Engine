@@ -13,3 +13,8 @@ python-multipart==0.0.9
 requests==2.31.0
 pandas-datareader==0.10.0
 lxml==5.1.0
+
+# Database layer
+sqlalchemy==2.0.28
+psycopg2-binary==2.9.9
+alembic==1.13.1

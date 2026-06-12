@@ -1,22 +1,44 @@
 import numpy as np
 import pandas as pd
-from tensorflow.keras.models import Sequential
-from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
 from sklearn.preprocessing import MinMaxScaler
 import xgboost as xgb
 from sklearn.model_selection import TimeSeriesSplit
 from sklearn.metrics import classification_report
 import shap
 import warnings
+import sys
+import subprocess
+
 warnings.filterwarnings('ignore')
+
+def _check_tensorflow():
+    try:
+        cmd = [sys.executable, "-c", "import tensorflow"]
+        res = subprocess.run(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=5)
+        return res.returncode == 0
+    except Exception:
+        return False
+
+HAS_TENSORFLOW = _check_tensorflow()
+
+if HAS_TENSORFLOW:
+    from tensorflow.keras.models import Sequential
+    from tensorflow.keras.layers import LSTM, Dense, Dropout, Input
+else:
+    print("Warning: TensorFlow is unavailable or crashed during import. LSTM forecaster will use a LinearRegression fallback.")
 
 class LSTMForecaster:
     def __init__(self, sequence_length=60):
         self.seq_len = sequence_length
         self.scaler = MinMaxScaler()
         self.model = None
+        self._is_fallback = not HAS_TENSORFLOW
     
     def _build_model(self, n_features):
+        if self._is_fallback:
+            from sklearn.linear_model import LinearRegression
+            return LinearRegression()
+        
         model = Sequential([
             Input(shape=(self.seq_len, n_features)),
             LSTM(64, return_sequences=True), # Reduced from 128 for performance
@@ -30,6 +52,8 @@ class LSTMForecaster:
         return model
     
     def prepare_sequences(self, df: pd.DataFrame, feature_cols: list):
+        if self._is_fallback:
+            return None, None
         data = self.scaler.fit_transform(df[feature_cols + ['Close']].values)
         X, y = [], []
         for i in range(self.seq_len, len(data)):
@@ -38,6 +62,15 @@ class LSTMForecaster:
         return np.array(X), np.array(y)
     
     def train(self, df, feature_cols, epochs=1, validation_split=0.1): 
+        if self._is_fallback:
+            from sklearn.linear_model import LinearRegression
+            X = df[feature_cols].dropna()
+            y = df['Close'].shift(-1).loc[X.index].fillna(df['Close'])
+            if not X.empty:
+                self.model = LinearRegression()
+                self.model.fit(X, y)
+            return None
+            
         X, y = self.prepare_sequences(df, feature_cols)
         if len(X) == 0:
             return None
@@ -51,6 +84,15 @@ class LSTMForecaster:
         return history
         
     def predict(self, df, feature_cols):
+        if self._is_fallback:
+            if self.model is None:
+                self.train(df, feature_cols)
+            X = df[feature_cols].dropna()
+            if X.empty or self.model is None:
+                return df['Close'].values
+            predictions = self.model.predict(X)
+            return predictions
+
         if self.model is None:
             self.train(df, feature_cols)
         X, _ = self.prepare_sequences(df, feature_cols)
