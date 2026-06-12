@@ -108,6 +108,23 @@ def create_backtest_run(
     start: date, end: date, initial_capital: float,
     final_capital: float, metrics: Dict[str, Any]
 ) -> BacktestRun:
+    def _clean_val(v):
+        if v is None:
+            return None
+        import numpy as np
+        if hasattr(v, "item"):
+            try:
+                v = v.item()
+            except Exception:
+                pass
+        if isinstance(v, (np.floating, float)):
+            if np.isnan(v) or np.isinf(v):
+                return None
+            return float(v)
+        if isinstance(v, (np.integer, int)):
+            return int(v)
+        return v
+
     run = BacktestRun(
         stock_id=stock_id,
         strategy=strategy,
@@ -115,13 +132,13 @@ def create_backtest_run(
         end_date=end,
         initial_capital=initial_capital,
         final_capital=final_capital,
-        total_return=metrics.get('total_return'),
-        sharpe_ratio=metrics.get('sharpe_ratio'),
-        max_drawdown=metrics.get('max_drawdown'),
-        calmar_ratio=metrics.get('calmar_ratio'),
-        win_rate=metrics.get('win_rate'),
-        total_trades=metrics.get('total_trades'),
-        volatility=metrics.get('volatility'),
+        total_return=_clean_val(metrics.get('total_return')),
+        sharpe_ratio=_clean_val(metrics.get('sharpe_ratio')),
+        max_drawdown=_clean_val(metrics.get('max_drawdown')),
+        calmar_ratio=_clean_val(metrics.get('calmar_ratio')),
+        win_rate=_clean_val(metrics.get('win_rate')),
+        total_trades=_clean_val(metrics.get('total_trades')),
+        volatility=_clean_val(metrics.get('volatility')),
     )
     db.add(run)
     db.commit()

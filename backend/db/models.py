@@ -148,7 +148,7 @@ class ModelPrediction(Base):
     stock_id = Column(Integer, ForeignKey("stocks.id", ondelete="CASCADE"), nullable=False)
     model_type = Column(String(20), nullable=False)  # LSTM / XGBoost
     predicted_value = Column(Float, nullable=True)   # for LSTM: predicted price
-    predicted_signal = Column(String(10), nullable=True)  # for XGBoost: BUY / SELL / HOLD
+    predicted_signal = Column(String(20), nullable=True)  # for XGBoost: BUY / SELL / HOLD
     actual_price = Column(Float, nullable=True)  # filled in later for accuracy tracking
     prediction_date = Column(Date, nullable=False)
     horizon_days = Column(Integer, default=1)
