@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import numpy as np
 import pandas as pd
 
 class BaseStrategy(ABC):
@@ -10,8 +11,10 @@ class BaseStrategy(ABC):
         pass
     
     def _clean_signals(self, df):
-        df['position'] = df['signal'].diff()
-        df['position'] = df['position'].fillna(0)
+        # Collapse signal changes to +1 (enter long) / -1 (exit) / 0 (hold).
+        # A direct flip from -1 to 1 (or 1 to -1) has a diff of +/-2, which the
+        # BacktestEngine (it checks position == 1 / == -1) would silently ignore.
+        df['position'] = np.sign(df['signal'].diff().fillna(0))
         return df
 
 class EMACrossoverStrategy(BaseStrategy):
